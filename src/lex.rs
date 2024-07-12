@@ -1,10 +1,22 @@
 use std::{iter::Peekable, str::CharIndices};
 
-pub enum TokenData {
-    Num(f64),
-    Sym(char),
+#[derive(Clone)]
+pub enum Sym {
+    Add,
+    Sub,
+    Mul,
+    Div,
 }
 
+#[derive(Clone)]
+pub enum TokenData {
+    Num(f64),
+    Sym(Sym),
+    LBrack,
+    RBrack,
+}
+
+#[derive(Clone)]
 pub struct Token<'a> {
     pub data: TokenData,
     pub pos: usize,
@@ -14,7 +26,9 @@ pub struct Token<'a> {
 pub struct Lexer<'a> {
     pub original: &'a str,
     pub chars: Peekable<CharIndices<'a>>,
-    pub pos: usize,
+    pub actual_pos: usize,
+    pub token_start: usize,
+    pub token_start_pos: usize,
 }
 
 impl<'a> Lexer<'a> {
@@ -22,33 +36,44 @@ impl<'a> Lexer<'a> {
         Lexer {
             original: s,
             chars: s.char_indices().peekable(),
-            pos: 0,
+            actual_pos: 0,
+            token_start: 0,
+            token_start_pos: 0,
         }
     }
 
-    fn step_char(&mut self) -> usize {
-        if self.chars.next().is_some() {
-            let oldpos = self.pos;
-            self.pos += 1;
-            oldpos
-        } else {
-            self.pos
-        }
+    fn step_char(&mut self) {
+        self.chars.next();
+        self.actual_pos += 1;
     }
 
     fn peek_char(&mut self) -> Option<char> {
         self.chars.peek().map(|&(_, c)| c)
     }
 
-    fn get_substr(&mut self, start: usize) -> &'a str {
-        match self.chars.peek() {
-            None => &self.original[start..],
-            Some(&(end, _)) => &self.original[start..end],
+    fn start_token(&mut self) {
+        if let Some(&(start, _)) = self.chars.peek() {
+            self.token_start = start;
+            self.token_start_pos = self.actual_pos;
         }
     }
 
-    fn lex_num(&mut self, start: usize) -> Token<'a> {
-        let pos = self.pos;
+    fn get_substr(&mut self) -> &'a str {
+        match self.chars.peek() {
+            None => &self.original[self.token_start..],
+            Some(&(end, _)) => &self.original[self.token_start..end],
+        }
+    }
+
+    fn make_token(&mut self, data: TokenData) -> Token<'a> {
+        Token {
+            data,
+            pos: self.token_start_pos,
+            substr: self.get_substr(),
+        }
+    }
+
+    fn lex_num(&mut self) -> Token<'a> {
         let mut integral_part = 0.0;
         while let Some(d) = self.peek_char().and_then(|c| c.to_digit(10)) {
             integral_part *= 10.0;
@@ -67,29 +92,26 @@ impl<'a> Lexer<'a> {
                 self.step_char();
             }
 
-            Token {
-                data: TokenData::Num(integral_part + decimal_part / denominator),
-                pos,
-                substr: self.get_substr(start),
-            }
+            self.make_token(TokenData::Num(integral_part + decimal_part / denominator))
         } else {
-            Token {
-                data: TokenData::Num(integral_part),
-                pos,
-                substr: self.get_substr(start),
-            }
+            self.make_token(TokenData::Num(integral_part))
         }
     }
 
-    fn lex(&mut self, curr: char, start: usize) -> Token<'a> {
+    fn lex_token(&mut self, curr: char) -> Token<'a> {
+        self.start_token();
         if curr.is_ascii_digit() || curr == '.' {
-            self.lex_num(start)
+            self.lex_num()
         } else {
-            let pos = self.step_char();
-            Token {
-                data: TokenData::Sym(curr),
-                pos,
-                substr: self.get_substr(start),
+            self.step_char();
+            match curr {
+                '(' => self.make_token(TokenData::LBrack),
+                ')' => self.make_token(TokenData::RBrack),
+                '+' => self.make_token(TokenData::Sym(Sym::Add)),
+                '-' => self.make_token(TokenData::Sym(Sym::Sub)),
+                '*' => self.make_token(TokenData::Sym(Sym::Mul)),
+                '/' => self.make_token(TokenData::Sym(Sym::Div)),
+                _ => todo!("implement Lex errors"),
             }
         }
     }
@@ -99,12 +121,12 @@ impl<'a> Iterator for Lexer<'a> {
     type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Token<'a>> {
-        while let Some(&(p, c)) = self.chars.peek() {
+        while let Some(c) = self.peek_char() {
             if c == ' ' {
                 self.step_char();
                 continue;
             }
-            return Some(self.lex(c, p));
+            return Some(self.lex_token(c));
         }
 
         None

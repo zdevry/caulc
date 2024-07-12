@@ -1,15 +1,25 @@
-use lex::Lexer;
+#![allow(warnings)]
+use std::process::ExitCode;
 
+mod ast;
+mod error;
 mod lex;
+mod parse;
 
-fn main() {
-    let s = "10.28 + 27.6 * 75.4";
-    for t in Lexer::new(s) {
-        match t.data {
-            lex::TokenData::Num(x) => print!("Num {x}: "),
-            lex::TokenData::Sym(s) => print!("Sym {s}: "),
+fn main() -> ExitCode {
+    if let Some(s) = std::env::args().nth(1) {
+        match parse::parse(s.as_str()) {
+            Ok(expr) => {
+                println!("{}", expr.eval());
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("Error in parsing: {}", e.error);
+                ExitCode::FAILURE
+            }
         }
-
-        println!("'{}' ({})", t.substr, t.pos);
+    } else {
+        eprintln!("Provide an expression");
+        ExitCode::FAILURE
     }
 }
