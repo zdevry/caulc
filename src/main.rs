@@ -4,6 +4,7 @@ use std::process::ExitCode;
 mod ast;
 mod error;
 mod lex;
+mod operator;
 mod parse;
 
 fn main() -> ExitCode {

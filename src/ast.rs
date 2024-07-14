@@ -1,11 +1,4 @@
-use crate::lex;
-
-pub enum BinaryOp {
-    Add,
-    Sub,
-    Mul,
-    Div,
-}
+use crate::operator::BinaryOp;
 
 pub struct Binary {
     pub op: BinaryOp,
@@ -24,6 +17,10 @@ impl Expr {
             Expr::Num(x) => *x,
             Expr::Binary(b) => b.eval(),
         }
+    }
+
+    pub fn binary(op: BinaryOp, lhs: Expr, rhs: Expr) -> Expr {
+        Expr::Binary(Box::new(Binary { op, lhs, rhs }))
     }
 }
 
