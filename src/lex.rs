@@ -4,7 +4,7 @@ use std::{iter::Peekable, str::CharIndices};
 #[derive(Clone, Debug)]
 pub enum TokenData {
     Num(f64),
-    Int(i32),
+    Int(i64),
     Add,
     Sub,
     Mul,
@@ -78,7 +78,7 @@ impl<'a> LexIter<'a> {
 
     fn try_parse_num(&mut self) -> LexResult<'a> {
         let substr = self.get_substr();
-        if let Ok(n) = substr.parse::<i32>() {
+        if let Ok(n) = substr.parse::<i64>() {
             Ok(self.make_token(TokenData::Int(n)))
         } else if let Ok(x) = substr.parse::<f64>() {
             Ok(self.make_token(TokenData::Num(x)))
@@ -176,15 +176,15 @@ impl<'a> Iterator for LexIter<'a> {
     }
 }
 
-pub struct TokenLexer<'a> {
+pub struct Lexer<'a> {
     lex_iter: Peekable<LexIter<'a>>,
     last_token_end_pos: usize,
     pub original: &'a str,
 }
 
-impl<'a> TokenLexer<'a> {
-    pub fn new(s: &'a str) -> TokenLexer<'a> {
-        TokenLexer {
+impl<'a> Lexer<'a> {
+    pub fn new(s: &'a str) -> Lexer<'a> {
+        Lexer {
             lex_iter: LexIter::new(s).peekable(),
             last_token_end_pos: 0,
             original: s,

@@ -1,17 +1,17 @@
 use crate::{
     ast::Expr,
     error,
-    lex::{TokenData, TokenLexer},
-    operator::try_get_binary_operator,
+    lex::{Lexer, TokenData},
+    operator::{try_get_binary_operator, try_get_prefix_operator},
 };
 
 pub type ParseResult<'a> = Result<Expr, error::ParseError<'a>>;
 
-fn atom<'a>(lexer: &mut TokenLexer<'a>) -> ParseResult<'a> {
+fn atom<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
     let token = lexer.next_token()?;
     match token.data {
         TokenData::Num(x) => Ok(Expr::Num(x)),
-        TokenData::Int(n) => Ok(Expr::Num(n as f64)),
+        TokenData::Int(n) => Ok(Expr::Int(n)),
         TokenData::LBrack => {
             let expr = pratt(lexer, 0)?;
             let rbrack = lexer.next_token()?;
@@ -28,8 +28,23 @@ fn atom<'a>(lexer: &mut TokenLexer<'a>) -> ParseResult<'a> {
     }
 }
 
-fn pratt<'a>(lexer: &mut TokenLexer<'a>, prev_prec: u8) -> ParseResult<'a> {
-    let mut lhs = atom(lexer)?;
+fn postfixed<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
+    atom(lexer)
+}
+
+fn prefixed<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
+    let token = lexer.peek_token()?;
+    if let Some(op) = try_get_prefix_operator(&token.data) {
+        lexer.next_token();
+        let operand = prefixed(lexer)?;
+        Ok(Expr::unary(op, operand))
+    } else {
+        postfixed(lexer)
+    }
+}
+
+fn pratt<'a>(lexer: &mut Lexer<'a>, prev_prec: u8) -> ParseResult<'a> {
+    let mut lhs = prefixed(lexer)?;
 
     while let Some((op, prec, r_assoc)) = try_get_binary_operator(&lexer.peek_token()?.data) {
         if prec < prev_prec || (prec == prev_prec && !r_assoc) {
@@ -44,7 +59,7 @@ fn pratt<'a>(lexer: &mut TokenLexer<'a>, prev_prec: u8) -> ParseResult<'a> {
 }
 
 pub fn parse<'a>(s: &'a str) -> ParseResult<'a> {
-    let mut lexer = TokenLexer::new(s);
+    let mut lexer = Lexer::new(s);
     let expr = pratt(&mut lexer, 0)?;
     let final_token = lexer.peek_token()?;
     match final_token.data {

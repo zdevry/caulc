@@ -5,6 +5,7 @@ pub enum BinaryOp {
     Sub,
     Mul,
     Div,
+    Pow,
 }
 
 pub fn try_get_binary_operator(data: &TokenData) -> Option<(BinaryOp, u8, bool)> {
@@ -13,6 +14,21 @@ pub fn try_get_binary_operator(data: &TokenData) -> Option<(BinaryOp, u8, bool)>
         TokenData::Sub => Some((BinaryOp::Sub, 10, false)),
         TokenData::Mul => Some((BinaryOp::Mul, 20, false)),
         TokenData::Div => Some((BinaryOp::Div, 20, false)),
+        _ => None,
+    }
+}
+
+pub enum UnaryOp {
+    Positive,
+    Negative,
+    Percent,
+    Factorial,
+}
+
+pub fn try_get_prefix_operator(data: &TokenData) -> Option<UnaryOp> {
+    match data {
+        TokenData::Add => Some(UnaryOp::Positive),
+        TokenData::Sub => Some(UnaryOp::Negative),
         _ => None,
     }
 }
