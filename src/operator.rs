@@ -32,3 +32,11 @@ pub fn try_get_prefix_operator(data: &TokenData) -> Option<UnaryOp> {
         _ => None,
     }
 }
+
+pub fn try_get_postfix_operator(data: &TokenData) -> Option<UnaryOp> {
+    match data {
+        TokenData::Percent => Some(UnaryOp::Percent),
+        TokenData::Factorial => Some(UnaryOp::Factorial),
+        _ => None,
+    }
+}

@@ -2,7 +2,9 @@ use crate::{
     ast::Expr,
     error,
     lex::{Lexer, TokenData},
-    operator::{try_get_binary_operator, try_get_prefix_operator},
+    operator::{
+        try_get_binary_operator, try_get_postfix_operator, try_get_prefix_operator, BinaryOp,
+    },
 };
 
 pub type ParseResult<'a> = Result<Expr, error::ParseError<'a>>;
@@ -29,7 +31,20 @@ fn atom<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
 }
 
 fn postfixed<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
-    atom(lexer)
+    let mut operand = atom(lexer)?;
+    loop {
+        let token = lexer.peek_token()?;
+        if let Some(op) = try_get_postfix_operator(&token.data) {
+            lexer.next_token();
+            operand = Expr::unary(op, operand);
+        } else if token.data == TokenData::Pow {
+            lexer.next_token();
+            let power = prefixed(lexer)?;
+            operand = Expr::binary(BinaryOp::Pow, operand, power)
+        } else {
+            return Ok(operand);
+        }
+    }
 }
 
 fn prefixed<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {

@@ -18,6 +18,9 @@ pub fn get_token_str(token: &Token) -> String {
         TokenData::Div => String::from("symbol '/'"),
         TokenData::LBrack => String::from("symbol '('"),
         TokenData::RBrack => String::from("symbol ')'"),
+        TokenData::Pow => String::from("symbol '^'"),
+        TokenData::Factorial => String::from("symbol '!'"),
+        TokenData::Percent => String::from("symbol '%'"),
         TokenData::EndOfInput => String::from("end of input"),
     }
 }

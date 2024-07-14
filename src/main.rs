@@ -17,7 +17,11 @@ fn display_evaluation(expr: &ast::Expr) -> ExitCode {
                     eprintln!(" -> int")
                 }
                 autonum::AutoNum::Float(x) => {
-                    println!("{}", x);
+                    if x >= 1e10 {
+                        println!("{x:e}");
+                    } else {
+                        println!("{x}")
+                    }
                     eprintln!(" -> float")
                 }
             }

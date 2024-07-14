@@ -1,7 +1,7 @@
 use crate::error;
 use std::{iter::Peekable, str::CharIndices};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TokenData {
     Num(f64),
     Int(i64),
@@ -9,6 +9,9 @@ pub enum TokenData {
     Sub,
     Mul,
     Div,
+    Pow,
+    Factorial,
+    Percent,
     LBrack,
     RBrack,
     EndOfInput,
@@ -151,6 +154,9 @@ impl<'a> LexIter<'a> {
             '-' => Ok(self.make_token(TokenData::Sub)),
             '*' => Ok(self.make_token(TokenData::Mul)),
             '/' => Ok(self.make_token(TokenData::Div)),
+            '^' => Ok(self.make_token(TokenData::Pow)),
+            '%' => Ok(self.make_token(TokenData::Percent)),
+            '!' => Ok(self.make_token(TokenData::Factorial)),
             _ => Err(error::unknown_symbol(
                 curr,
                 self.token_start_pos,
