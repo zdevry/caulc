@@ -15,7 +15,7 @@ fn main() -> ExitCode {
                 ExitCode::SUCCESS
             }
             Err(e) => {
-                eprintln!("Error in parsing: {}", e.error);
+                error::display_error(e);
                 ExitCode::FAILURE
             }
         }

@@ -1,4 +1,4 @@
-use crate::lex::{Sym, TokenData};
+use crate::lex::TokenData;
 
 pub enum BinaryOp {
     Add,
@@ -7,24 +7,12 @@ pub enum BinaryOp {
     Div,
 }
 
-pub struct Precedence {
-    pub value: u8,
-    pub reverse: bool,
-}
-
-fn get_operator(s: &Sym) -> Option<(BinaryOp, u8, bool)> {
-    match s {
-        Sym::Add => Some((BinaryOp::Add, 10, false)),
-        Sym::Sub => Some((BinaryOp::Sub, 10, false)),
-        Sym::Mul => Some((BinaryOp::Mul, 20, false)),
-        Sym::Div => Some((BinaryOp::Div, 20, false)),
-        _ => None,
-    }
-}
-
-pub fn try_get_operator(data: &TokenData) -> Option<(BinaryOp, u8, bool)> {
+pub fn try_get_binary_operator(data: &TokenData) -> Option<(BinaryOp, u8, bool)> {
     match data {
-        TokenData::Sym(s) => get_operator(s),
+        TokenData::Add => Some((BinaryOp::Add, 10, false)),
+        TokenData::Sub => Some((BinaryOp::Sub, 10, false)),
+        TokenData::Mul => Some((BinaryOp::Mul, 20, false)),
+        TokenData::Div => Some((BinaryOp::Div, 20, false)),
         _ => None,
     }
 }

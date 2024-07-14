@@ -2,17 +2,13 @@ use crate::error;
 use std::{iter::Peekable, str::CharIndices};
 
 #[derive(Clone, Debug)]
-pub enum Sym {
+pub enum TokenData {
+    Num(f64),
+    Int(i32),
     Add,
     Sub,
     Mul,
     Div,
-}
-
-#[derive(Clone, Debug)]
-pub enum TokenData {
-    Num(f64),
-    Sym(Sym),
     LBrack,
     RBrack,
     EndOfInput,
@@ -34,7 +30,7 @@ pub struct LexIter<'a> {
     token_start_byte: usize,
 }
 
-type LexResult<'a> = Result<Token<'a>, error::ParseError>;
+type LexResult<'a> = Result<Token<'a>, error::ParseError<'a>>;
 
 impl<'a> LexIter<'a> {
     pub fn new(s: &'a str) -> LexIter<'a> {
@@ -80,46 +76,86 @@ impl<'a> LexIter<'a> {
         }
     }
 
-    fn lex_num(&mut self) -> Token<'a> {
-        let mut integral_part = 0.0;
-        while let Some(d) = self.peek_char().and_then(|c| c.to_digit(10)) {
-            integral_part *= 10.0;
-            integral_part += d as f64;
+    fn try_parse_num(&mut self) -> LexResult<'a> {
+        let substr = self.get_substr();
+        if let Ok(n) = substr.parse::<i32>() {
+            Ok(self.make_token(TokenData::Int(n)))
+        } else if let Ok(x) = substr.parse::<f64>() {
+            Ok(self.make_token(TokenData::Num(x)))
+        } else {
+            Err(error::ParseError {
+                error: String::from("Unable to parse number"),
+                start_pos: self.token_start_pos,
+                end_pos: self.curr_actual_pos,
+                original: self.original,
+            })
+        }
+    }
+
+    fn lex_num(&mut self) -> LexResult<'a> {
+        let mut has_parsed_digits = false;
+        while self.peek_char().is_some_and(|c| c.is_ascii_digit()) {
             self.step_char();
+            has_parsed_digits = true;
         }
 
-        if self.peek_char().filter(|&c| c == '.').is_some() {
+        if self.peek_char().is_some_and(|c| c == '.') {
             self.step_char();
-            let mut decimal_part = 0.0;
-            let mut denominator = 1.0;
-            while let Some(d) = self.peek_char().and_then(|c| c.to_digit(10)) {
-                decimal_part *= 10.0;
-                decimal_part += d as f64;
-                denominator *= 10.0;
+            while self.peek_char().is_some_and(|c| c.is_ascii_digit()) {
+                self.step_char();
+                has_parsed_digits = true;
+            }
+        }
+        if !has_parsed_digits {
+            return Err(error::ParseError {
+                error: String::from("Lone decimal dot with no digits"),
+                start_pos: self.token_start_pos,
+                end_pos: self.curr_actual_pos,
+                original: self.original,
+            });
+        }
+
+        if self.peek_char().is_some_and(|c| c == 'e' || c == 'E') {
+            self.step_char();
+            if self.peek_char().is_some_and(|c| c == '-') {
                 self.step_char();
             }
-
-            self.make_token(TokenData::Num(integral_part + decimal_part / denominator))
-        } else {
-            self.make_token(TokenData::Num(integral_part))
+            if !self.peek_char().is_some_and(|c| c.is_ascii_digit()) {
+                return Err(error::ParseError {
+                    error: String::from("Missing exponent"),
+                    start_pos: self.curr_actual_pos,
+                    end_pos: self.curr_actual_pos,
+                    original: self.original,
+                });
+            }
+            self.step_char();
+            while self.peek_char().is_some_and(|c| c.is_ascii_digit()) {
+                self.step_char();
+            }
         }
+
+        self.try_parse_num()
     }
 
     fn lex_token(&mut self, curr: char) -> LexResult<'a> {
         self.start_token();
         if curr.is_ascii_digit() || curr == '.' {
-            Ok(self.lex_num())
-        } else {
-            self.step_char();
-            match curr {
-                '(' => Ok(self.make_token(TokenData::LBrack)),
-                ')' => Ok(self.make_token(TokenData::RBrack)),
-                '+' => Ok(self.make_token(TokenData::Sym(Sym::Add))),
-                '-' => Ok(self.make_token(TokenData::Sym(Sym::Sub))),
-                '*' => Ok(self.make_token(TokenData::Sym(Sym::Mul))),
-                '/' => Ok(self.make_token(TokenData::Sym(Sym::Div))),
-                _ => Err(error::unknown_symbol(curr, self.token_start_pos)),
-            }
+            return self.lex_num();
+        }
+
+        self.step_char();
+        match curr {
+            '(' => Ok(self.make_token(TokenData::LBrack)),
+            ')' => Ok(self.make_token(TokenData::RBrack)),
+            '+' => Ok(self.make_token(TokenData::Add)),
+            '-' => Ok(self.make_token(TokenData::Sub)),
+            '*' => Ok(self.make_token(TokenData::Mul)),
+            '/' => Ok(self.make_token(TokenData::Div)),
+            _ => Err(error::unknown_symbol(
+                curr,
+                self.token_start_pos,
+                self.original,
+            )),
         }
     }
 }
@@ -143,6 +179,7 @@ impl<'a> Iterator for LexIter<'a> {
 pub struct TokenLexer<'a> {
     lex_iter: Peekable<LexIter<'a>>,
     last_token_end_pos: usize,
+    pub original: &'a str,
 }
 
 impl<'a> TokenLexer<'a> {
@@ -150,6 +187,7 @@ impl<'a> TokenLexer<'a> {
         TokenLexer {
             lex_iter: LexIter::new(s).peekable(),
             last_token_end_pos: 0,
+            original: s,
         }
     }
 
