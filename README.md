@@ -22,3 +22,11 @@ $ target/release/caulc "45 / (100-45)%"
 $ target/release/caulc "4^3!"
 4096
 ```
+
+**Trigonometry and Logarithms**
+```
+$ target/release/caulc "sqrt(log(10000))"
+2
+$ target/release/caulc "sin(ln(3)) + tan(1/2)"
+1.4368795315115377
+```

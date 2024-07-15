@@ -62,10 +62,17 @@ impl Unary {
     pub fn eval(&self) -> EvalResult {
         let operand_result = self.operand.eval()?;
         match self.op {
-            UnaryOp::Negative => Ok(operand_result.negative()),
+            UnaryOp::Negative => Ok(operand_result.auto_negative()),
             UnaryOp::Positive => Ok(operand_result),
             UnaryOp::Percent => Ok(AutoNum::Float(operand_result.cast() / 100.0)),
-            UnaryOp::Factorial => operand_result.factorial(),
+            UnaryOp::Factorial => operand_result.auto_factorial(),
+            UnaryOp::Sqrt => operand_result.auto_sqrt(),
+            UnaryOp::Sin => Ok(AutoNum::Float(operand_result.cast().sin())),
+            UnaryOp::Cos => Ok(AutoNum::Float(operand_result.cast().cos())),
+            UnaryOp::Tan => Ok(AutoNum::Float(operand_result.cast().tan())),
+            UnaryOp::Exp => Ok(AutoNum::Float(operand_result.cast().exp())),
+            UnaryOp::Ln => operand_result.auto_ln(),
+            UnaryOp::Log => operand_result.auto_log(),
         }
     }
 }

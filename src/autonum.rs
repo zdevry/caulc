@@ -74,7 +74,6 @@ impl AutoNum {
             &AutoNum::Int(n) => {
                 if n < 64 && n > -64 {
                     let negexp = n < 0;
-                    let mut product = AutoNum::Int(1);
                     let product = std::iter::repeat(self)
                         .take(n.abs() as usize)
                         .fold(AutoNum::Int(1), |acc, x| acc.auto_mul(x));
@@ -92,7 +91,7 @@ impl AutoNum {
         }
     }
 
-    pub fn negative(&self) -> AutoNum {
+    pub fn auto_negative(&self) -> AutoNum {
         match self {
             &AutoNum::Int(n) => match n.checked_neg() {
                 Some(result) => AutoNum::Int(result),
@@ -102,7 +101,7 @@ impl AutoNum {
         }
     }
 
-    pub fn factorial(&self) -> EvalResult {
+    pub fn auto_factorial(&self) -> EvalResult {
         match self {
             &AutoNum::Int(n) => {
                 if n < 0 {
@@ -119,6 +118,62 @@ impl AutoNum {
             AutoNum::Float(_) => Err(EvalError {
                 error: String::from("Cannot take the factorial of a floating point value"),
             }),
+        }
+    }
+
+    pub fn auto_sqrt(&self) -> EvalResult {
+        match self {
+            &AutoNum::Int(n) => {
+                if n < 0 {
+                    Err(EvalError {
+                        error: String::from("Cannot take the square root of a negative number"),
+                    })
+                } else {
+                    let sqrt_val = (n as f64).sqrt();
+                    let isqrt = sqrt_val as i64;
+                    match isqrt.checked_mul(isqrt) {
+                        Some(n2) => {
+                            if n == n2 {
+                                Ok(AutoNum::Int(isqrt))
+                            } else {
+                                Ok(AutoNum::Float(sqrt_val))
+                            }
+                        }
+                        None => Ok(AutoNum::Float(sqrt_val)),
+                    }
+                }
+            }
+            &AutoNum::Float(x) => {
+                if x < 0.0 {
+                    Err(EvalError {
+                        error: String::from("Cannot take the square root of a negative number"),
+                    })
+                } else {
+                    Ok(AutoNum::Float(x.sqrt()))
+                }
+            }
+        }
+    }
+
+    pub fn auto_ln(&self) -> EvalResult {
+        let val = self.cast();
+        if val <= 0.0 {
+            Err(EvalError {
+                error: String::from("Cannot take the logarithm of a non-positive number"),
+            })
+        } else {
+            Ok(AutoNum::Float(val.ln()))
+        }
+    }
+
+    pub fn auto_log(&self) -> EvalResult {
+        let val = self.cast();
+        if val <= 0.0 {
+            Err(EvalError {
+                error: String::from("Cannot take the logarithm of a non-positive number"),
+            })
+        } else {
+            Ok(AutoNum::Float(val.log10()))
         }
     }
 }

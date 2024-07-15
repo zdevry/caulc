@@ -1,8 +1,8 @@
-use crate::error;
+use crate::error::ParseError;
 use std::{iter::Peekable, str::CharIndices};
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum TokenData {
+#[derive(Clone, Debug)]
+pub enum TokenData<'a> {
     Num(f64),
     Int(i64),
     Add,
@@ -12,14 +12,15 @@ pub enum TokenData {
     Pow,
     Factorial,
     Percent,
-    LBrack,
-    RBrack,
+    LBracket,
+    RBracket,
+    Word(&'a str),
     EndOfInput,
 }
 
 #[derive(Clone, Debug)]
 pub struct Token<'a> {
-    pub data: TokenData,
+    pub data: TokenData<'a>,
     pub start_pos: usize,
     pub end_pos: usize,
     pub substr: &'a str,
@@ -33,7 +34,7 @@ pub struct LexIter<'a> {
     token_start_byte: usize,
 }
 
-type LexResult<'a> = Result<Token<'a>, error::ParseError<'a>>;
+type LexResult<'a> = Result<Token<'a>, ParseError<'a>>;
 
 impl<'a> LexIter<'a> {
     pub fn new(s: &'a str) -> LexIter<'a> {
@@ -70,7 +71,7 @@ impl<'a> LexIter<'a> {
         }
     }
 
-    fn make_token(&mut self, data: TokenData) -> Token<'a> {
+    fn make_token(&mut self, data: TokenData<'a>) -> Token<'a> {
         Token {
             data,
             start_pos: self.token_start_pos,
@@ -86,7 +87,7 @@ impl<'a> LexIter<'a> {
         } else if let Ok(x) = substr.parse::<f64>() {
             Ok(self.make_token(TokenData::Num(x)))
         } else {
-            Err(error::ParseError {
+            Err(ParseError {
                 error: String::from("Unable to parse number"),
                 start_pos: self.token_start_pos,
                 end_pos: self.curr_actual_pos,
@@ -110,12 +111,11 @@ impl<'a> LexIter<'a> {
             }
         }
         if !has_parsed_digits {
-            return Err(error::ParseError {
-                error: String::from("Lone decimal dot with no digits"),
-                start_pos: self.token_start_pos,
-                end_pos: self.curr_actual_pos,
-                original: self.original,
-            });
+            return Err(ParseError::from_pos(
+                String::from("Lone decimal dot with no digits"),
+                self.token_start_pos,
+                self.original,
+            ));
         }
 
         if self.peek_char().is_some_and(|c| c == 'e' || c == 'E') {
@@ -124,12 +124,11 @@ impl<'a> LexIter<'a> {
                 self.step_char();
             }
             if !self.peek_char().is_some_and(|c| c.is_ascii_digit()) {
-                return Err(error::ParseError {
-                    error: String::from("Missing exponent"),
-                    start_pos: self.curr_actual_pos,
-                    end_pos: self.curr_actual_pos,
-                    original: self.original,
-                });
+                return Err(ParseError::from_pos(
+                    String::from("Missing exponent"),
+                    self.curr_actual_pos,
+                    self.original,
+                ));
             }
             self.step_char();
             while self.peek_char().is_some_and(|c| c.is_ascii_digit()) {
@@ -140,16 +139,28 @@ impl<'a> LexIter<'a> {
         self.try_parse_num()
     }
 
+    fn lex_word(&mut self) -> Token<'a> {
+        while self.peek_char().is_some_and(|c| c.is_ascii_alphabetic()) {
+            self.step_char();
+        }
+
+        let word = self.get_substr();
+        self.make_token(TokenData::Word(word))
+    }
+
     fn lex_token(&mut self, curr: char) -> LexResult<'a> {
         self.start_token();
         if curr.is_ascii_digit() || curr == '.' {
             return self.lex_num();
+        } else if curr.is_ascii_alphabetic() {
+            self.step_char();
+            return Ok(self.lex_word());
         }
 
         self.step_char();
         match curr {
-            '(' => Ok(self.make_token(TokenData::LBrack)),
-            ')' => Ok(self.make_token(TokenData::RBrack)),
+            '(' => Ok(self.make_token(TokenData::LBracket)),
+            ')' => Ok(self.make_token(TokenData::RBracket)),
             '+' => Ok(self.make_token(TokenData::Add)),
             '-' => Ok(self.make_token(TokenData::Sub)),
             '*' => Ok(self.make_token(TokenData::Mul)),
@@ -157,8 +168,8 @@ impl<'a> LexIter<'a> {
             '^' => Ok(self.make_token(TokenData::Pow)),
             '%' => Ok(self.make_token(TokenData::Percent)),
             '!' => Ok(self.make_token(TokenData::Factorial)),
-            _ => Err(error::unknown_symbol(
-                curr,
+            _ => Err(ParseError::from_pos(
+                format!("'{curr}' is an unknown symbol"),
                 self.token_start_pos,
                 self.original,
             )),

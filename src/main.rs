@@ -1,5 +1,4 @@
-#![allow(warnings)]
-use std::{io::Write, process::ExitCode};
+use std::process::ExitCode;
 
 mod ast;
 mod autonum;
@@ -39,7 +38,7 @@ fn main() -> ExitCode {
         match parse::parse(s.as_str()) {
             Ok(expr) => display_evaluation(&expr),
             Err(e) => {
-                error::display_error(e);
+                e.display_error_to_stderr();
                 ExitCode::FAILURE
             }
         }
