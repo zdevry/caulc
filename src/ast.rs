@@ -66,7 +66,7 @@ impl Unary {
             UnaryOp::Positive => Ok(operand_result),
             UnaryOp::Percent => Ok(AutoNum::Float(operand_result.cast() / 100.0)),
             UnaryOp::Factorial => operand_result.auto_factorial(),
-            UnaryOp::Sqrt => operand_result.auto_sqrt(),
+            UnaryOp::RootN(n) => operand_result.auto_root_n(n),
             UnaryOp::Sin => Ok(AutoNum::Float(operand_result.cast().sin())),
             UnaryOp::Cos => Ok(AutoNum::Float(operand_result.cast().cos())),
             UnaryOp::Tan => Ok(AutoNum::Float(operand_result.cast().tan())),

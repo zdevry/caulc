@@ -6,6 +6,7 @@ mod error;
 mod lex;
 mod operator;
 mod parse;
+mod units;
 
 fn display_evaluation(expr: &ast::Expr) -> ExitCode {
     match expr.eval() {

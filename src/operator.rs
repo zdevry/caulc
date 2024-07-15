@@ -23,7 +23,7 @@ pub enum UnaryOp {
     Negative,
     Percent,
     Factorial,
-    Sqrt,
+    RootN(u8),
     Sin,
     Cos,
     Tan,
@@ -50,7 +50,8 @@ pub fn try_get_postfix_operator(data: &TokenData) -> Option<UnaryOp> {
 
 pub fn try_get_function(w: &str) -> Option<UnaryOp> {
     match w {
-        "sqrt" => Some(UnaryOp::Sqrt),
+        "sqrt" => Some(UnaryOp::RootN(2)),
+        "cbrt" => Some(UnaryOp::RootN(3)),
         "sin" => Some(UnaryOp::Sin),
         "cos" => Some(UnaryOp::Cos),
         "tan" => Some(UnaryOp::Tan),

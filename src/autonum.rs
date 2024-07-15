@@ -121,35 +121,26 @@ impl AutoNum {
         }
     }
 
-    pub fn auto_sqrt(&self) -> EvalResult {
-        match self {
-            &AutoNum::Int(n) => {
-                if n < 0 {
+    pub fn auto_root_n(&self, n: u8) -> EvalResult {
+        let val = self.cast();
+        match n {
+            2 => {
+                if val < 0.0 {
                     Err(EvalError {
-                        error: String::from("Cannot take the square root of a negative number"),
+                        error: format!("Cannot take the square root of a negative number"),
                     })
                 } else {
-                    let sqrt_val = (n as f64).sqrt();
-                    let isqrt = sqrt_val as i64;
-                    match isqrt.checked_mul(isqrt) {
-                        Some(n2) => {
-                            if n == n2 {
-                                Ok(AutoNum::Int(isqrt))
-                            } else {
-                                Ok(AutoNum::Float(sqrt_val))
-                            }
-                        }
-                        None => Ok(AutoNum::Float(sqrt_val)),
-                    }
+                    Ok(AutoNum::Float(val.sqrt()))
                 }
             }
-            &AutoNum::Float(x) => {
-                if x < 0.0 {
+            3 => Ok(AutoNum::Float(val.cbrt())),
+            _ => {
+                if n % 2 == 0 && val < 0.0 {
                     Err(EvalError {
-                        error: String::from("Cannot take the square root of a negative number"),
+                        error: format!("Cannot take the {n}-root of a negative number"),
                     })
                 } else {
-                    Ok(AutoNum::Float(x.sqrt()))
+                    Ok(AutoNum::Float(val.powf(1.0 / (n as f64))))
                 }
             }
         }

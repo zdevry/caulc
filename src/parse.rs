@@ -1,10 +1,10 @@
 use crate::{
     ast::Expr,
     error::{get_token_str, ParseError},
-    lex::{Lexer, TokenData},
+    lex::{Lexer, Token, TokenData},
     operator::{
         try_get_binary_operator, try_get_function, try_get_postfix_operator,
-        try_get_prefix_operator, BinaryOp,
+        try_get_prefix_operator, BinaryOp, UnaryOp,
     },
 };
 
@@ -23,32 +23,76 @@ fn bracketed<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
     }
 }
 
+fn function<'a>(lexer: &mut Lexer<'a>, word: &'a str, word_token: &Token<'a>) -> ParseResult<'a> {
+    match try_get_function(word) {
+        Some(op) => {
+            let token = lexer.next_token()?;
+            match token.data {
+                TokenData::LBracket => {
+                    let inner = bracketed(lexer)?;
+                    Ok(Expr::unary(op, inner))
+                }
+                _ => Err(ParseError::from_token(
+                    String::from("expected left bracket '(' after function"),
+                    &token,
+                    lexer.original,
+                )),
+            }
+        }
+        None => Err(ParseError::from_token(
+            format!("'{word}' is not a valid function"),
+            word_token,
+            lexer.original,
+        )),
+    }
+}
+
+fn root_n<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
+    let n_token = lexer.next_token()?;
+    if let TokenData::Int(n) = n_token.data {
+        if n <= 0 {
+            return Err(ParseError::from_token(
+                format!("cannot take {n}-root"),
+                &n_token,
+                lexer.original,
+            ));
+        } else if n > 255 {
+            return Err(ParseError::from_token(
+                format!("{n}-root exceeds maximum supported for the program, (max: 255). Use x^(1/y) instead"),
+                &n_token,
+                lexer.original,
+            ));
+        }
+
+        let lbrack_token = lexer.next_token()?;
+        if !matches!(lbrack_token.data, TokenData::LBracket) {
+            return Err(ParseError::from_token(
+                String::from("expected left bracket '(' after function"),
+                &lbrack_token,
+                lexer.original,
+            ));
+        }
+
+        let inner = bracketed(lexer)?;
+        Ok(Expr::unary(UnaryOp::RootN(n as u8), inner))
+    } else {
+        Err(ParseError::from_pos(
+            String::from("Missing integer for root function"),
+            n_token.start_pos,
+            lexer.original,
+        ))
+    }
+}
+
 fn atom<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
     let token = lexer.next_token()?;
     match token.data {
         TokenData::Num(x) => Ok(Expr::Num(x)),
         TokenData::Int(n) => Ok(Expr::Int(n)),
         TokenData::LBracket => bracketed(lexer),
-        TokenData::Word(w) => match try_get_function(w) {
-            Some(op) => {
-                let token = lexer.next_token()?;
-                match token.data {
-                    TokenData::LBracket => {
-                        let inner = bracketed(lexer)?;
-                        Ok(Expr::unary(op, inner))
-                    }
-                    _ => Err(ParseError::from_token(
-                        String::from("expected left bracket '(' after function"),
-                        &token,
-                        lexer.original,
-                    )),
-                }
-            }
-            None => Err(ParseError::from_token(
-                format!("'{w}' is not a valid function"),
-                &token,
-                lexer.original,
-            )),
+        TokenData::Word(w) => match w {
+            "root" => root_n(lexer),
+            _ => function(lexer, w, &token),
         },
         _ => Err(ParseError::from_token(
             format!("unexpected {}", get_token_str(&token)),
