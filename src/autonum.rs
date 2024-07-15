@@ -1,22 +1,17 @@
-use crate::ast::{EvalError, EvalResult};
+use crate::ast::EvalError;
 
 pub enum AutoNum {
     Int(i64),
     Float(f64),
 }
 
+type AutoNumResult = Result<AutoNum, EvalError>;
+
 impl AutoNum {
     pub fn cast(&self) -> f64 {
         match self {
             &AutoNum::Int(n) => n as f64,
             &AutoNum::Float(x) => x,
-        }
-    }
-
-    fn is_zero(&self) -> bool {
-        match self {
-            &AutoNum::Int(n) => n == 0,
-            &AutoNum::Float(x) => x == 0.0,
         }
     }
 
@@ -50,22 +45,29 @@ impl AutoNum {
         }
     }
 
-    pub fn auto_div(&self, other: &AutoNum) -> EvalResult {
-        if other.is_zero() {
-            return Err(EvalError {
-                error: String::from("Division by 0"),
-            });
-        }
-
+    pub fn auto_div(&self, other: &AutoNum) -> AutoNumResult {
         match (self, other) {
             (&AutoNum::Int(left), &AutoNum::Int(right)) => {
-                if left % right == 0 {
+                if right == 0 {
+                    Err(EvalError {
+                        error: String::from("Division by 0"),
+                    })
+                } else if left % right == 0 {
                     Ok(AutoNum::Int(left / right))
                 } else {
                     Ok(AutoNum::Float((left as f64) / (right as f64)))
                 }
             }
-            _ => Ok(AutoNum::Float(self.cast() / other.cast())),
+            _ => {
+                let denom = other.cast();
+                if denom == 0.0 {
+                    Err(EvalError {
+                        error: String::from("Division by 0"),
+                    })
+                } else {
+                    Ok(AutoNum::Float(self.cast() / denom))
+                }
+            }
         }
     }
 
@@ -101,7 +103,7 @@ impl AutoNum {
         }
     }
 
-    pub fn auto_factorial(&self) -> EvalResult {
+    pub fn auto_factorial(&self) -> AutoNumResult {
         match self {
             &AutoNum::Int(n) => {
                 if n < 0 {
@@ -121,7 +123,7 @@ impl AutoNum {
         }
     }
 
-    pub fn auto_root_n(&self, n: i8) -> EvalResult {
+    pub fn auto_root_n(&self, n: i8) -> AutoNumResult {
         let val = self.cast();
         match n {
             2 => {
@@ -146,7 +148,7 @@ impl AutoNum {
         }
     }
 
-    pub fn auto_ln(&self) -> EvalResult {
+    pub fn auto_ln(&self) -> AutoNumResult {
         let val = self.cast();
         if val <= 0.0 {
             Err(EvalError {
@@ -157,7 +159,7 @@ impl AutoNum {
         }
     }
 
-    pub fn auto_log(&self) -> EvalResult {
+    pub fn auto_log(&self) -> AutoNumResult {
         let val = self.cast();
         if val <= 0.0 {
             Err(EvalError {

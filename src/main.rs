@@ -11,20 +11,7 @@ mod units;
 fn display_evaluation(expr: &ast::Expr) -> ExitCode {
     match expr.eval() {
         Ok(result) => {
-            match result {
-                autonum::AutoNum::Int(n) => {
-                    println!("{}", n);
-                    eprintln!(" -> int")
-                }
-                autonum::AutoNum::Float(x) => {
-                    if x >= 1e10 {
-                        println!("{x:e}");
-                    } else {
-                        println!("{x}")
-                    }
-                    eprintln!(" -> float")
-                }
-            }
+            println!("{}", result.to_str());
             ExitCode::SUCCESS
         }
         Err(e) => {
