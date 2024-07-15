@@ -121,7 +121,7 @@ impl AutoNum {
         }
     }
 
-    pub fn auto_root_n(&self, n: u8) -> EvalResult {
+    pub fn auto_root_n(&self, n: i8) -> EvalResult {
         let val = self.cast();
         match n {
             2 => {

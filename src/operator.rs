@@ -23,7 +23,7 @@ pub enum UnaryOp {
     Negative,
     Percent,
     Factorial,
-    RootN(u8),
+    RootN(i8),
     Sin,
     Cos,
     Tan,

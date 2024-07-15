@@ -56,9 +56,9 @@ fn root_n<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
                 &n_token,
                 lexer.original,
             ));
-        } else if n > 255 {
+        } else if n > 127 {
             return Err(ParseError::from_token(
-                format!("{n}-root exceeds maximum supported for the program, (max: 255). Use x^(1/y) instead"),
+                format!("{n}-root exceeds maximum supported for the program (max: 127). Use x^(1/y) instead"),
                 &n_token,
                 lexer.original,
             ));
@@ -74,7 +74,7 @@ fn root_n<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
         }
 
         let inner = bracketed(lexer)?;
-        Ok(Expr::unary(UnaryOp::RootN(n as u8), inner))
+        Ok(Expr::unary(UnaryOp::RootN(n as i8), inner))
     } else {
         Err(ParseError::from_pos(
             String::from("Missing integer for root function"),
