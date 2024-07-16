@@ -5,16 +5,10 @@ use std::{iter::Peekable, str::CharIndices};
 pub enum TokenData<'a> {
     Num(f64),
     Int(i64),
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Pow,
-    Factorial,
-    Percent,
+    Sym(char),
+    Word(&'a str),
     LBracket,
     RBracket,
-    Word(&'a str),
     EndOfInput,
 }
 
@@ -164,18 +158,7 @@ impl<'a> LexIter<'a> {
         match curr {
             '(' => Ok(self.make_token(TokenData::LBracket)),
             ')' => Ok(self.make_token(TokenData::RBracket)),
-            '+' => Ok(self.make_token(TokenData::Add)),
-            '-' => Ok(self.make_token(TokenData::Sub)),
-            '*' => Ok(self.make_token(TokenData::Mul)),
-            '/' => Ok(self.make_token(TokenData::Div)),
-            '^' => Ok(self.make_token(TokenData::Pow)),
-            '%' => Ok(self.make_token(TokenData::Percent)),
-            '!' => Ok(self.make_token(TokenData::Factorial)),
-            _ => Err(ParseError::from_pos(
-                format!("'{curr}' is an unknown symbol"),
-                self.token_start_pos,
-                self.original,
-            )),
+            _ => Ok(self.make_token(TokenData::Sym(curr))),
         }
     }
 }

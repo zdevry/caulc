@@ -47,15 +47,9 @@ pub fn get_token_str(token: &Token) -> String {
     match token.data {
         TokenData::Num(_) => format!("number '{}'", token.substr),
         TokenData::Int(_) => format!("integer '{}'", token.substr),
-        TokenData::Add => String::from("plus '+'"),
-        TokenData::Sub => String::from("minus '-'"),
-        TokenData::Mul => String::from("star '*'"),
-        TokenData::Div => String::from("slash '/'"),
         TokenData::LBracket => String::from("left bracket '('"),
         TokenData::RBracket => String::from("right bracket ')'"),
-        TokenData::Pow => String::from("caret '^'"),
-        TokenData::Factorial => String::from("bang '!'"),
-        TokenData::Percent => String::from("percent '%'"),
+        TokenData::Sym(c) => format!("symbol '{c}'"),
         TokenData::Word(s) => format!("word '{s}'"),
         TokenData::EndOfInput => String::from("end of input"),
     }

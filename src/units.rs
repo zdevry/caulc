@@ -192,6 +192,13 @@ impl Quantity {
         }
     }
 
+    pub fn mul_quantity(&self, other: &Quantity) -> EvalResult {
+        Ok(Quantity::new(
+            self.value.auto_mul(&other.value),
+            self.units.combine(&other.units, false)?,
+        ))
+    }
+
     pub fn pow_quantity(&self, other: &Quantity) -> EvalResult {
         if !other.units.no_units() {
             return Err(EvalError {

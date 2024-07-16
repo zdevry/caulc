@@ -19,10 +19,16 @@ pub struct Unary {
     pub operand: Expr,
 }
 
+pub struct WithUnits {
+    pub inner: Expr,
+    pub units: Quantity,
+}
+
 pub enum Expr {
     Quantity(Quantity),
     Binary(Box<Binary>),
     Unary(Box<Unary>),
+    WithUnits(Box<WithUnits>),
 }
 
 impl Expr {
@@ -31,6 +37,13 @@ impl Expr {
             Expr::Quantity(x) => Ok(x.clone()),
             Expr::Binary(b) => b.eval(),
             Expr::Unary(u) => u.eval(),
+            Expr::WithUnits(wu) => {
+                let inner_result = wu.inner.eval()?;
+                Ok(Quantity::new(
+                    inner_result.value.auto_mul(&wu.units.value),
+                    inner_result.units.combine(&wu.units.units, false)?,
+                ))
+            }
         }
     }
 
@@ -40,6 +53,10 @@ impl Expr {
 
     pub fn unary(op: UnaryOp, operand: Expr) -> Expr {
         Expr::Unary(Box::new(Unary { op, operand }))
+    }
+
+    pub fn with_units(inner: Expr, units: Quantity) -> Expr {
+        Expr::WithUnits(Box::new(WithUnits { inner, units }))
     }
 }
 
@@ -58,10 +75,7 @@ impl Binary {
                 |a, b| a.auto_checked_binary_op(b, |x, y| x.checked_sub(*y), |x, y| *x - *y),
                 "cannot subtract two quantities with different units",
             ),
-            BinaryOp::Mul => Ok(Quantity::new(
-                left.value.auto_mul(&right.value),
-                left.units.combine(&right.units, false)?,
-            )),
+            BinaryOp::Mul => left.mul_quantity(&right),
             BinaryOp::Div => Ok(Quantity::new(
                 left.value.auto_div(&right.value)?,
                 left.units.combine(&right.units, true)?,

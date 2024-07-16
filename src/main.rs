@@ -1,10 +1,11 @@
 use std::process::ExitCode;
 
+use consts::Definitions;
+
 mod ast;
 mod autonum;
 mod consts;
 mod error;
-mod functions;
 mod lex;
 mod operator;
 mod parse;
@@ -25,7 +26,7 @@ fn display_evaluation(expr: &ast::Expr) -> ExitCode {
 
 fn main() -> ExitCode {
     if let Some(s) = std::env::args().nth(1) {
-        match parse::parse(s.as_str()) {
+        match parse::parse(s.as_str(), &Definitions::get_default()) {
             Ok(expr) => display_evaluation(&expr),
             Err(e) => {
                 e.display_error_to_stderr();

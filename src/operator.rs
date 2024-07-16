@@ -1,5 +1,3 @@
-use crate::lex::TokenData;
-
 pub enum BinaryOp {
     Add,
     Sub,
@@ -8,12 +6,12 @@ pub enum BinaryOp {
     Pow,
 }
 
-pub fn try_get_binary_operator(data: &TokenData) -> Option<(BinaryOp, u8, bool)> {
+pub fn try_get_binary_operator(data: char) -> Option<(BinaryOp, u8, bool)> {
     match data {
-        TokenData::Add => Some((BinaryOp::Add, 10, false)),
-        TokenData::Sub => Some((BinaryOp::Sub, 10, false)),
-        TokenData::Mul => Some((BinaryOp::Mul, 20, false)),
-        TokenData::Div => Some((BinaryOp::Div, 20, false)),
+        '+' => Some((BinaryOp::Add, 10, false)),
+        '-' => Some((BinaryOp::Sub, 10, false)),
+        '*' => Some((BinaryOp::Mul, 20, false)),
+        '/' => Some((BinaryOp::Div, 20, false)),
         _ => None,
     }
 }
@@ -32,18 +30,18 @@ pub enum UnaryOp {
     Log,
 }
 
-pub fn try_get_prefix_operator(data: &TokenData) -> Option<UnaryOp> {
+pub fn try_get_prefix_operator(data: char) -> Option<UnaryOp> {
     match data {
-        TokenData::Add => Some(UnaryOp::Positive),
-        TokenData::Sub => Some(UnaryOp::Negative),
+        '+' => Some(UnaryOp::Positive),
+        '-' => Some(UnaryOp::Negative),
         _ => None,
     }
 }
 
-pub fn try_get_postfix_operator(data: &TokenData) -> Option<UnaryOp> {
+pub fn try_get_postfix_operator(data: char) -> Option<UnaryOp> {
     match data {
-        TokenData::Percent => Some(UnaryOp::Percent),
-        TokenData::Factorial => Some(UnaryOp::Factorial),
+        '%' => Some(UnaryOp::Percent),
+        '!' => Some(UnaryOp::Factorial),
         _ => None,
     }
 }
