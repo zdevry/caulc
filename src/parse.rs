@@ -110,14 +110,24 @@ fn atom<'a>(lexer: &mut Lexer<'a>, defs: &Definitions<'a>) -> ParseResult<'a> {
     }
 }
 
-fn parse_unit_exponent<'a>(lexer: &mut Lexer<'a>) -> Result<i8, ParseError<'a>> {
+fn parse_unit_exponent<'a>(
+    lexer: &mut Lexer<'a>,
+    units_str: &mut String,
+) -> Result<i8, ParseError<'a>> {
     let token = lexer.next_token()?;
     let exponent = match token.data {
-        TokenData::Int(n) => n,
+        TokenData::Int(n) => {
+            units_str.push_str(token.substr);
+            n
+        }
         TokenData::Sym('-') => {
+            units_str.push('-');
             let num_token = lexer.next_token()?;
             match num_token.data {
-                TokenData::Int(n) => -n,
+                TokenData::Int(n) => {
+                    units_str.push_str(num_token.substr);
+                    -n
+                }
                 _ => {
                     return Err(ParseError::from_token(
                         format!(
@@ -159,16 +169,25 @@ fn parse_unit_exponent<'a>(lexer: &mut Lexer<'a>) -> Result<i8, ParseError<'a>> 
 fn parse_units<'a>(
     lexer: &mut Lexer<'a>,
     defs: &Definitions<'a>,
-) -> Result<Quantity, ParseError<'a>> {
+) -> Result<(String, Quantity), ParseError<'a>> {
     let mut units_quantity = Quantity::dimensionless(AutoNum::Float(1.0));
+    let mut units_str = String::new();
+    let mut first = true;
 
     while let (TokenData::Word(w), token) = {
         let token = lexer.peek_token()?;
         (token.data.clone(), token)
     } {
+        if !first {
+            units_str.push(' ');
+        }
+
         let _ = lexer.next_token();
         let base_unit = match defs.get_unit(w) {
-            Some(u) => u,
+            Some(u) => {
+                units_str.push_str(w);
+                u
+            }
             None => {
                 return Err(ParseError::from_token(
                     format!("'{w}' is not a valid unit"),
@@ -183,15 +202,18 @@ fn parse_units<'a>(
                 .map_err(|e| ParseError::from_token(e.error, &token, lexer.original))?;
             continue;
         }
+
+        units_str.push('^');
         let _ = lexer.next_token();
-        let exponent = parse_unit_exponent(lexer)?;
+        let exponent = parse_unit_exponent(lexer, &mut units_str)?;
         let exponentiated_unit = base_unit.units.pow(exponent);
         let exponentiated_value = base_unit.value.auto_pow(&AutoNum::Int(exponent as i64));
         units_quantity = exponentiated_unit
             .and_then(|d| units_quantity.mul_quantity(&Quantity::new(exponentiated_value, d)))
             .map_err(|e| ParseError::from_token(e.error, &token, lexer.original))?;
+        first = false;
     }
-    Ok(units_quantity)
+    Ok((units_str, units_quantity))
 }
 
 fn postfixed<'a>(
@@ -217,7 +239,7 @@ fn postfixed<'a>(
                 }
             }
             TokenData::Word(_) if consume_postfix_words => {
-                let units = parse_units(lexer, defs)?;
+                let (_, units) = parse_units(lexer, defs)?;
                 return Ok(Expr::with_units(operand, units));
             }
             _ => {
@@ -246,7 +268,7 @@ fn prefixed<'a>(
     }
 }
 
-fn pratt<'a>(lexer: &mut Lexer<'a>, defs: &Definitions<'a>, prev_prec: u8) -> ParseResult<'a> {
+pub fn pratt<'a>(lexer: &mut Lexer<'a>, defs: &Definitions<'a>, prev_prec: u8) -> ParseResult<'a> {
     let mut lhs = prefixed(lexer, defs, true)?;
 
     while let Some((op, prec, r_assoc)) = {
@@ -265,18 +287,4 @@ fn pratt<'a>(lexer: &mut Lexer<'a>, defs: &Definitions<'a>, prev_prec: u8) -> Pa
     }
 
     Ok(lhs)
-}
-
-pub fn parse<'a>(s: &'a str, defs: &Definitions<'a>) -> ParseResult<'a> {
-    let mut lexer = Lexer::new(s);
-    let expr = pratt(&mut lexer, defs, 0)?;
-    let final_token = lexer.peek_token()?;
-    match final_token.data {
-        TokenData::EndOfInput => Ok(expr),
-        _ => Err(ParseError::from_token(
-            format!("unexpected {}", get_token_str(&final_token)),
-            &final_token,
-            lexer.original,
-        )),
-    }
 }

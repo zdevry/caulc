@@ -161,19 +161,6 @@ impl Quantity {
         }
     }
 
-    pub fn to_str(&self) -> String {
-        match self.value {
-            AutoNum::Int(n) => format!("{n} {} :: int", self.units.to_str()),
-            AutoNum::Float(x) => {
-                if x >= 1e10 {
-                    format!("{x:e} {} :: float", self.units.to_str())
-                } else {
-                    format!("{x} {} :: float", self.units.to_str())
-                }
-            }
-        }
-    }
-
     pub fn combine_quantity_terms(
         &self,
         other: &Quantity,

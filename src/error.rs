@@ -49,6 +49,7 @@ pub fn get_token_str(token: &Token) -> String {
         TokenData::Int(_) => format!("integer '{}'", token.substr),
         TokenData::LBracket => String::from("left bracket '('"),
         TokenData::RBracket => String::from("right bracket ')'"),
+        TokenData::Comma => String::from("comma ','"),
         TokenData::Sym(c) => format!("symbol '{c}'"),
         TokenData::Word(s) => format!("word '{s}'"),
         TokenData::EndOfInput => String::from("end of input"),

@@ -1,7 +1,5 @@
 use std::process::ExitCode;
 
-use consts::Definitions;
-
 mod ast;
 mod autonum;
 mod consts;
@@ -9,12 +7,13 @@ mod error;
 mod lex;
 mod operator;
 mod parse;
+mod query;
 mod units;
 
-fn display_evaluation(expr: &ast::Expr) -> ExitCode {
-    match expr.eval() {
-        Ok(result) => {
-            println!("{}", result.to_str());
+fn display_evaluation(query: &query::Query) -> ExitCode {
+    match query.get_answer() {
+        Ok(answer) => {
+            println!("{answer}");
             ExitCode::SUCCESS
         }
         Err(e) => {
@@ -26,8 +25,8 @@ fn display_evaluation(expr: &ast::Expr) -> ExitCode {
 
 fn main() -> ExitCode {
     if let Some(s) = std::env::args().nth(1) {
-        match parse::parse(s.as_str(), &Definitions::get_default()) {
-            Ok(expr) => display_evaluation(&expr),
+        match query::parse(s.as_str(), &consts::Definitions::get_default()) {
+            Ok(query) => display_evaluation(&query),
             Err(e) => {
                 e.display_error_to_stderr();
                 ExitCode::FAILURE
