@@ -1,11 +1,12 @@
 use crate::ast::EvalError;
 
+#[derive(Clone)]
 pub enum AutoNum {
     Int(i64),
     Float(f64),
 }
 
-type AutoNumResult = Result<AutoNum, EvalError>;
+pub type AutoNumResult = Result<AutoNum, EvalError>;
 
 impl AutoNum {
     pub fn cast(&self) -> f64 {
@@ -15,34 +16,27 @@ impl AutoNum {
         }
     }
 
-    pub fn auto_add(&self, other: &AutoNum) -> AutoNum {
-        match (self, other) {
-            (AutoNum::Int(left), AutoNum::Int(right)) => match left.checked_add(*right) {
-                Some(result) => AutoNum::Int(result),
-                None => AutoNum::Float(self.cast() + other.cast()),
-            },
-            _ => AutoNum::Float(self.cast() + other.cast()),
-        }
+    pub fn cast_then<F: Fn(&f64) -> f64>(&self, f: F) -> AutoNum {
+        AutoNum::Float(f(&self.cast()))
     }
 
-    pub fn auto_sub(&self, other: &AutoNum) -> AutoNum {
+    pub fn auto_checked_binary_op(
+        &self,
+        other: &AutoNum,
+        checked_op: fn(&i64, &i64) -> Option<i64>,
+        fallback: fn(&f64, &f64) -> f64,
+    ) -> AutoNum {
         match (self, other) {
-            (AutoNum::Int(left), AutoNum::Int(right)) => match left.checked_sub(*right) {
+            (AutoNum::Int(left), AutoNum::Int(right)) => match checked_op(left, right) {
                 Some(result) => AutoNum::Int(result),
-                None => AutoNum::Float(self.cast() - other.cast()),
+                None => AutoNum::Float(fallback(&(*left as f64), &(*right as f64))),
             },
-            _ => AutoNum::Float(self.cast() - other.cast()),
+            _ => AutoNum::Float(fallback(&self.cast(), &other.cast())),
         }
     }
 
     pub fn auto_mul(&self, other: &AutoNum) -> AutoNum {
-        match (self, other) {
-            (AutoNum::Int(left), AutoNum::Int(right)) => match left.checked_mul(*right) {
-                Some(result) => AutoNum::Int(result),
-                None => AutoNum::Float(self.cast() * other.cast()),
-            },
-            _ => AutoNum::Float(self.cast() * other.cast()),
-        }
+        self.auto_checked_binary_op(other, |a, b| a.checked_mul(*b), |a, b| *a * *b)
     }
 
     pub fn auto_div(&self, other: &AutoNum) -> AutoNumResult {
@@ -65,7 +59,7 @@ impl AutoNum {
                         error: String::from("Division by 0"),
                     })
                 } else {
-                    Ok(AutoNum::Float(self.cast() / denom))
+                    Ok(self.cast_then(|x| x / denom))
                 }
             }
         }
@@ -81,25 +75,15 @@ impl AutoNum {
                         .fold(AutoNum::Int(1), |acc, x| acc.auto_mul(x));
 
                     if negexp {
-                        AutoNum::Float(1.0 / product.cast())
+                        product.cast_then(|x| 1.0 / x)
                     } else {
                         product
                     }
                 } else {
-                    AutoNum::Float(self.cast().powf(n as f64))
+                    self.cast_then(|x| x.powf(n as f64))
                 }
             }
-            &AutoNum::Float(x) => AutoNum::Float(self.cast().powf(x)),
-        }
-    }
-
-    pub fn auto_negative(&self) -> AutoNum {
-        match self {
-            &AutoNum::Int(n) => match n.checked_neg() {
-                Some(result) => AutoNum::Int(result),
-                None => AutoNum::Float(-(n as f64)),
-            },
-            &AutoNum::Float(x) => AutoNum::Float(-x),
+            &AutoNum::Float(x) => self.cast_then(|y| y.powf(x)),
         }
     }
 
@@ -123,50 +107,40 @@ impl AutoNum {
         }
     }
 
-    pub fn auto_root_n(&self, n: i8) -> AutoNumResult {
+    pub fn auto_positive_only(
+        &self,
+        f: fn(&f64) -> f64,
+        can_equals_zero: bool,
+        error_msg: &str,
+    ) -> AutoNumResult {
         let val = self.cast();
+        if val < 0.0 || (val == 0.0 && !can_equals_zero) {
+            Err(EvalError {
+                error: String::from(error_msg),
+            })
+        } else {
+            Ok(AutoNum::Float(f(&val)))
+        }
+    }
+
+    pub fn auto_root_n(&self, n: i8) -> AutoNumResult {
         match n {
-            2 => {
-                if val < 0.0 {
-                    Err(EvalError {
-                        error: format!("Cannot take the square root of a negative number"),
-                    })
-                } else {
-                    Ok(AutoNum::Float(val.sqrt()))
-                }
-            }
-            3 => Ok(AutoNum::Float(val.cbrt())),
+            2 => self.auto_positive_only(
+                |x| x.sqrt(),
+                true,
+                "Cannot take the square root of a negative number",
+            ),
+            3 => Ok(self.cast_then(|x| x.cbrt())),
             _ => {
+                let val = self.cast();
                 if n % 2 == 0 && val < 0.0 {
                     Err(EvalError {
                         error: format!("Cannot take the {n}-root of a negative number"),
                     })
                 } else {
-                    Ok(AutoNum::Float(val.powf(1.0 / (n as f64))))
+                    Ok(self.cast_then(|x| x.powf(1.0 / (n as f64))))
                 }
             }
-        }
-    }
-
-    pub fn auto_ln(&self) -> AutoNumResult {
-        let val = self.cast();
-        if val <= 0.0 {
-            Err(EvalError {
-                error: String::from("Cannot take the logarithm of a non-positive number"),
-            })
-        } else {
-            Ok(AutoNum::Float(val.ln()))
-        }
-    }
-
-    pub fn auto_log(&self) -> AutoNumResult {
-        let val = self.cast();
-        if val <= 0.0 {
-            Err(EvalError {
-                error: String::from("Cannot take the logarithm of a non-positive number"),
-            })
-        } else {
-            Ok(AutoNum::Float(val.log10()))
         }
     }
 }

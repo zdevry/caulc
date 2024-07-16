@@ -1,4 +1,7 @@
-use crate::{ast::EvalError, autonum::AutoNum};
+use crate::{
+    ast::{EvalError, EvalResult},
+    autonum::{AutoNum, AutoNumResult},
+};
 
 fn gcd(m: i8, n: i8) -> i8 {
     match n {
@@ -117,11 +120,12 @@ impl Dimension {
         self.exponents.iter().all(|n| *n == 0)
     }
 
-    pub fn get_units_str(&self) -> String {
+    pub fn to_str(&self) -> String {
         String::from("[TODO]") // TODO: implement get_dimension_str
     }
 }
 
+#[derive(Clone)]
 pub struct Quantity {
     pub value: AutoNum,
     pub units: Dimension,
@@ -132,62 +136,45 @@ impl Quantity {
         Quantity { value, units }
     }
 
+    pub fn dimensionless(value: AutoNum) -> Quantity {
+        Quantity {
+            value,
+            units: Dimension::new(0, 0, 0, 0, 0, 0, 0, 1),
+        }
+    }
+
     pub fn to_str(&self) -> String {
         match self.value {
-            AutoNum::Int(n) => format!("{n} {} :: int", self.units.get_units_str()),
+            AutoNum::Int(n) => format!("{n} {} :: int", self.units.to_str()),
             AutoNum::Float(x) => {
                 if x >= 1e10 {
-                    format!("{x:e} {} :: float", self.units.get_units_str())
+                    format!("{x:e} {} :: float", self.units.to_str())
                 } else {
-                    format!("{x} {} :: float", self.units.get_units_str())
+                    format!("{x} {} :: float", self.units.to_str())
                 }
             }
         }
     }
 
-    pub fn add(&self, other: &Quantity) -> Result<Quantity, EvalError> {
+    pub fn combine_quantity_terms(
+        &self,
+        other: &Quantity,
+        combine_op: fn(&AutoNum, &AutoNum) -> AutoNum,
+        error_msg: &str,
+    ) -> EvalResult {
         if self.units != other.units {
             Err(EvalError {
-                error: format!(
-                    "cannot add two quantities with different units: {} and {}",
-                    self.units.get_units_str(),
-                    other.units.get_units_str()
-                ),
+                error: String::from(error_msg),
             })
         } else {
-            let result = self.value.auto_add(&other.value);
-            Ok(Quantity::new(result, self.units.clone()))
+            Ok(Quantity::new(
+                combine_op(&self.value, &other.value),
+                self.units.clone(),
+            ))
         }
     }
 
-    pub fn sub(&self, other: &Quantity) -> Result<Quantity, EvalError> {
-        if self.units != other.units {
-            Err(EvalError {
-                error: format!(
-                    "cannot subtract two quantities with different units: {} and {}",
-                    self.units.get_units_str(),
-                    other.units.get_units_str()
-                ),
-            })
-        } else {
-            let result = self.value.auto_sub(&other.value);
-            Ok(Quantity::new(result, self.units.clone()))
-        }
-    }
-
-    pub fn mul(&self, other: &Quantity) -> Result<Quantity, EvalError> {
-        let units = self.units.combine(&other.units, false)?;
-        let value = self.value.auto_mul(&other.value);
-        Ok(Quantity::new(value, units))
-    }
-
-    pub fn div(&self, other: &Quantity) -> Result<Quantity, EvalError> {
-        let units = self.units.combine(&other.units, true)?;
-        let value = self.value.auto_div(&other.value)?;
-        Ok(Quantity::new(value, units))
-    }
-
-    pub fn pow(&self, other: &Quantity) -> Result<Quantity, EvalError> {
+    pub fn pow_quantity(&self, other: &Quantity) -> EvalResult {
         if !other.units.no_units() {
             return Err(EvalError {
                 error: String::from("cannot take the power of a quantity with units"),
@@ -218,120 +205,13 @@ impl Quantity {
         }
     }
 
-    pub fn negative(&self) -> Quantity {
-        Quantity::new(self.value.auto_negative(), self.units.clone())
-    }
-
-    pub fn percent(&self) -> Result<Quantity, EvalError> {
-        if !self.units.no_units() {
-            return Err(EvalError {
-                error: String::from(
-                    "cannot use percentage on quantity with units, consider using x / 100 instead",
-                ),
-            });
+    pub fn unitless_op(&self, op: fn(&AutoNum) -> AutoNumResult, error_msg: &str) -> EvalResult {
+        if self.units.no_units() {
+            Ok(Quantity::dimensionless(op(&self.value)?))
+        } else {
+            Err(EvalError {
+                error: String::from(error_msg),
+            })
         }
-
-        Ok(Quantity::new(
-            AutoNum::Float(self.value.cast() / 100.0),
-            self.units.clone(),
-        ))
-    }
-
-    pub fn factorial(&self) -> Result<Quantity, EvalError> {
-        if !self.units.no_units() {
-            return Err(EvalError {
-                error: String::from("cannot take the factorial of quantity with units"),
-            });
-        }
-
-        Ok(Quantity::new(
-            self.value.auto_factorial()?,
-            self.units.clone(),
-        ))
-    }
-
-    pub fn root_n(&self, n: i8) -> Result<Quantity, EvalError> {
-        let units = self.units.root(n)?;
-        let value = self.value.auto_root_n(n)?;
-
-        Ok(Quantity::new(value, units))
-    }
-
-    pub fn sin(&self) -> Result<Quantity, EvalError> {
-        if !self.units.no_units() {
-            return Err(EvalError {
-                error: String::from(
-                    "cannot take the sine of quantity with units (degrees are dimensionless)",
-                ),
-            });
-        }
-
-        Ok(Quantity::new(
-            AutoNum::Float(self.value.cast().sin()),
-            self.units.clone(),
-        ))
-    }
-
-    pub fn cos(&self) -> Result<Quantity, EvalError> {
-        if !self.units.no_units() {
-            return Err(EvalError {
-                error: String::from(
-                    "cannot take the cosine of quantity with units (degrees are dimensionless)",
-                ),
-            });
-        }
-
-        Ok(Quantity::new(
-            AutoNum::Float(self.value.cast().cos()),
-            self.units.clone(),
-        ))
-    }
-
-    pub fn tan(&self) -> Result<Quantity, EvalError> {
-        if !self.units.no_units() {
-            return Err(EvalError {
-                error: String::from(
-                    "cannot take the tangent of quantity with units (degrees are dimensionless)",
-                ),
-            });
-        }
-
-        Ok(Quantity::new(
-            AutoNum::Float(self.value.cast().tan()),
-            self.units.clone(),
-        ))
-    }
-
-    pub fn exp(&self) -> Result<Quantity, EvalError> {
-        if !self.units.no_units() {
-            return Err(EvalError {
-                error: String::from("cannot take the exponentiation of quantity with units"),
-            });
-        }
-
-        Ok(Quantity::new(
-            AutoNum::Float(self.value.cast().exp()),
-            self.units.clone(),
-        ))
-    }
-
-    pub fn ln(&self) -> Result<Quantity, EvalError> {
-        if !self.units.no_units() {
-            return Err(EvalError {
-                error: String::from("cannot take the natural log of quantity with units"),
-            });
-        }
-
-        Ok(Quantity::new(self.value.auto_ln()?, self.units.clone()))
-    }
-
-    pub fn log(&self) -> Result<Quantity, EvalError> {
-        if !self.units.no_units() {
-            return Err(EvalError {
-                error: String::from("cannot take the log of quantity with units"),
-            });
-        }
-
-        Ok(Quantity::new(self.value.auto_log()?, self.units.clone()))
     }
 }

@@ -1,11 +1,13 @@
 use crate::{
     ast::Expr,
+    autonum::AutoNum,
     error::{get_token_str, ParseError},
     lex::{Lexer, Token, TokenData},
     operator::{
         try_get_binary_operator, try_get_function, try_get_postfix_operator,
         try_get_prefix_operator, BinaryOp, UnaryOp,
     },
+    units::Quantity,
 };
 
 pub type ParseResult<'a> = Result<Expr, ParseError<'a>>;
@@ -87,8 +89,8 @@ fn root_n<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
 fn atom<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
     let token = lexer.next_token()?;
     match token.data {
-        TokenData::Num(x) => Ok(Expr::Num(x)),
-        TokenData::Int(n) => Ok(Expr::Int(n)),
+        TokenData::Num(x) => Ok(Expr::Quantity(Quantity::dimensionless(AutoNum::Float(x)))),
+        TokenData::Int(n) => Ok(Expr::Quantity(Quantity::dimensionless(AutoNum::Int(n)))),
         TokenData::LBracket => bracketed(lexer),
         TokenData::Word(w) => match w {
             "root" => root_n(lexer),
