@@ -56,7 +56,7 @@ impl Dimension {
         let mut result_exponents = self.exponents.clone();
         let added_correctly = result_exponents
             .iter_mut()
-            .zip(other.exponents.iter())
+            .zip(other.exponents)
             .map(|(a, b)| -> bool {
                 a.checked_mul(factor_a)
                     .zip(b.checked_mul(factor_b))
@@ -120,8 +120,26 @@ impl Dimension {
         self.exponents.iter().all(|n| *n == 0)
     }
 
+    const SI_UNIT_NAMES: [&'static str; 7] = ["kg", "m", "s", "A", "K", "mol", "cd"];
     pub fn to_str(&self) -> String {
-        String::from("[TODO]") // TODO: implement get_dimension_str
+        self.exponents
+            .iter()
+            .zip(Dimension::SI_UNIT_NAMES)
+            .filter_map(|(&e, u)| {
+                if e == 0 {
+                    return None;
+                }
+                let frac_gcd = gcd(e, self.denom);
+                let simpl_numerator = e / frac_gcd;
+                let simpl_denom = self.denom / frac_gcd;
+                match (simpl_numerator, simpl_denom) {
+                    (1, 1) => Some(String::from(u)),
+                    (_, 1) => Some(format!("{u}^{simpl_numerator}")),
+                    _ => Some(format!("{u}^{simpl_numerator}/{simpl_denom}")),
+                }
+            })
+            .collect::<Vec<String>>()
+            .join(" ")
     }
 }
 

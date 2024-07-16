@@ -2,7 +2,9 @@ use std::process::ExitCode;
 
 mod ast;
 mod autonum;
+mod consts;
 mod error;
+mod functions;
 mod lex;
 mod operator;
 mod parse;

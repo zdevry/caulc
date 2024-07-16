@@ -140,7 +140,10 @@ impl<'a> LexIter<'a> {
     }
 
     fn lex_word(&mut self) -> Token<'a> {
-        while self.peek_char().is_some_and(|c| c.is_ascii_alphabetic()) {
+        while self
+            .peek_char()
+            .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        {
             self.step_char();
         }
 
@@ -152,7 +155,7 @@ impl<'a> LexIter<'a> {
         self.start_token();
         if curr.is_ascii_digit() || curr == '.' {
             return self.lex_num();
-        } else if curr.is_ascii_alphabetic() {
+        } else if curr.is_ascii_alphabetic() || curr == '_' {
             self.step_char();
             return Ok(self.lex_word());
         }

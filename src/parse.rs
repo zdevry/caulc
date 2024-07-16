@@ -1,6 +1,7 @@
 use crate::{
     ast::Expr,
     autonum::AutoNum,
+    consts::try_get_constant,
     error::{get_token_str, ParseError},
     lex::{Lexer, Token, TokenData},
     operator::{
@@ -25,27 +26,32 @@ fn bracketed<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
     }
 }
 
-fn function<'a>(lexer: &mut Lexer<'a>, word: &'a str, word_token: &Token<'a>) -> ParseResult<'a> {
-    match try_get_function(word) {
-        Some(op) => {
-            let token = lexer.next_token()?;
-            match token.data {
-                TokenData::LBracket => {
-                    let inner = bracketed(lexer)?;
-                    Ok(Expr::unary(op, inner))
-                }
-                _ => Err(ParseError::from_token(
-                    String::from("expected left bracket '(' after function"),
-                    &token,
-                    lexer.original,
-                )),
+fn function_or_const<'a>(
+    lexer: &mut Lexer<'a>,
+    word: &'a str,
+    word_token: &Token<'a>,
+) -> ParseResult<'a> {
+    if let Some(op) = try_get_function(word) {
+        let token = lexer.next_token()?;
+        match token.data {
+            TokenData::LBracket => {
+                let inner = bracketed(lexer)?;
+                Ok(Expr::unary(op, inner))
             }
+            _ => Err(ParseError::from_token(
+                String::from("expected left bracket '(' after function"),
+                &token,
+                lexer.original,
+            )),
         }
-        None => Err(ParseError::from_token(
+    } else if let Some(c) = try_get_constant(word) {
+        Ok(Expr::Quantity(c))
+    } else {
+        Err(ParseError::from_token(
             format!("'{word}' is not a valid function"),
             word_token,
             lexer.original,
-        )),
+        ))
     }
 }
 
@@ -94,7 +100,7 @@ fn atom<'a>(lexer: &mut Lexer<'a>) -> ParseResult<'a> {
         TokenData::LBracket => bracketed(lexer),
         TokenData::Word(w) => match w {
             "root" => root_n(lexer),
-            _ => function(lexer, w, &token),
+            _ => function_or_const(lexer, w, &token),
         },
         _ => Err(ParseError::from_token(
             format!("unexpected {}", get_token_str(&token)),

@@ -125,7 +125,7 @@ impl Unary {
             UnaryOp::Log => operand_result.unitless_op(
                 |x| {
                     x.auto_positive_only(
-                        |y| y.ln(),
+                        |y| y.log10(),
                         false,
                         "Cannot take the natural log of a non-positive number",
                     )
