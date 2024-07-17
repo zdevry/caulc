@@ -65,6 +65,10 @@ fn get_default_constants<'a>() -> HashMap<&'a str, Quantity> {
         "g",
         qconst(9.80665, Dimension::new(0, 1, -2, 0, 0, 0, 0, 1)),
     );
+    result.insert(
+        "G",
+        qconst(6.6743015e-11, Dimension::new(-1, 3, -2, 0, 0, 0, 0, 1)),
+    );
 
     result
 }
@@ -79,6 +83,11 @@ fn get_default_units<'a>() -> HashMap<&'a str, Quantity> {
     result.insert("K", qconst(1.0, Dimension::new(0, 0, 0, 0, 1, 0, 0, 1)));
     result.insert("mol", qconst(1.0, Dimension::new(0, 0, 0, 0, 0, 1, 0, 1)));
     result.insert("cd", qconst(1.0, Dimension::new(0, 0, 0, 0, 0, 0, 1, 1)));
+
+    result.insert("deg", uconst(std::f64::consts::PI / 180.0));
+    result.insert("rad", uconst(1.0));
+
+    result.insert("L", qconst(0.001, Dimension::new(0, 3, 0, 0, 0, 0, 0, 1)));
 
     result.insert("N", qconst(1.0, Dimension::new(1, 1, -2, 0, 0, 0, 0, 1)));
 

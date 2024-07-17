@@ -8,6 +8,7 @@ use crate::{
         try_get_binary_operator, try_get_function, try_get_postfix_operator,
         try_get_prefix_operator, BinaryOp, UnaryOp,
     },
+    query::is_query_keyword,
     units::Quantity,
 };
 
@@ -166,7 +167,7 @@ fn parse_unit_exponent<'a>(
     Ok(exponent as i8)
 }
 
-fn parse_units<'a>(
+pub fn parse_units<'a>(
     lexer: &mut Lexer<'a>,
     defs: &Definitions<'a>,
 ) -> Result<(String, Quantity), ParseError<'a>> {
@@ -178,6 +179,10 @@ fn parse_units<'a>(
         let token = lexer.peek_token()?;
         (token.data.clone(), token)
     } {
+        if is_query_keyword(w) {
+            return Ok((units_str, units_quantity));
+        }
+
         if !first {
             units_str.push(' ');
         }
@@ -238,7 +243,7 @@ fn postfixed<'a>(
                     return Ok(operand);
                 }
             }
-            TokenData::Word(_) if consume_postfix_words => {
+            TokenData::Word(w) if consume_postfix_words && !is_query_keyword(w) => {
                 let (_, units) = parse_units(lexer, defs)?;
                 return Ok(Expr::with_units(operand, units));
             }

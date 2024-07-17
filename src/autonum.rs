@@ -1,6 +1,6 @@
 use crate::ast::EvalError;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum AutoNum {
     Int(i64),
     Float(f64),

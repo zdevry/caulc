@@ -24,16 +24,18 @@ fn display_evaluation(query: &query::Query) -> ExitCode {
 }
 
 fn main() -> ExitCode {
-    if let Some(s) = std::env::args().nth(1) {
-        match query::parse(s.as_str(), &consts::Definitions::get_default()) {
-            Ok(query) => display_evaluation(&query),
-            Err(e) => {
-                e.display_error_to_stderr();
-                ExitCode::FAILURE
-            }
-        }
-    } else {
+    let q = std::env::args().skip(1).collect::<Vec<String>>().join(" ");
+
+    if q.is_empty() {
         eprintln!("Provide an expression");
-        ExitCode::FAILURE
+        return ExitCode::FAILURE;
+    }
+
+    match query::parse(q.as_str(), &consts::Definitions::get_default()) {
+        Ok(query) => display_evaluation(&query),
+        Err(e) => {
+            e.display_error_to_stderr();
+            ExitCode::FAILURE
+        }
     }
 }

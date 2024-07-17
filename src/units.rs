@@ -121,7 +121,11 @@ impl Dimension {
     }
 
     const SI_UNIT_NAMES: [&'static str; 7] = ["kg", "m", "s", "A", "K", "mol", "cd"];
-    pub fn to_str(&self) -> String {
+    pub fn to_si_units_str(&self) -> String {
+        if self.no_units() {
+            return String::from("(dimensionless)");
+        }
+
         self.exponents
             .iter()
             .zip(Dimension::SI_UNIT_NAMES)
