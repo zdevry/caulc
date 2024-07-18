@@ -15,7 +15,7 @@ use crate::{
 pub type ParseResult<'a> = Result<Expr, ParseError<'a>>;
 
 fn bracketed<'a>(lexer: &mut Lexer<'a>, defs: &Definitions<'a>) -> ParseResult<'a> {
-    let expr = pratt(lexer, defs, 0)?;
+    let expr = parse_expr(lexer, defs)?;
     let rbrack = lexer.next_token()?;
     match rbrack.data {
         TokenData::RBracket => Ok(expr),
@@ -179,7 +179,7 @@ pub fn parse_units<'a>(
         let token = lexer.peek_token()?;
         (token.data.clone(), token)
     } {
-        if is_query_keyword(w) {
+        if is_query_keyword(w) || w == "per" {
             return Ok((units_str, units_quantity));
         }
 
@@ -273,7 +273,7 @@ fn prefixed<'a>(
     }
 }
 
-pub fn pratt<'a>(lexer: &mut Lexer<'a>, defs: &Definitions<'a>, prev_prec: u8) -> ParseResult<'a> {
+fn pratt<'a>(lexer: &mut Lexer<'a>, defs: &Definitions<'a>, prev_prec: u8) -> ParseResult<'a> {
     let mut lhs = prefixed(lexer, defs, true)?;
 
     while let Some((op, prec, r_assoc)) = {
@@ -292,4 +292,29 @@ pub fn pratt<'a>(lexer: &mut Lexer<'a>, defs: &Definitions<'a>, prev_prec: u8) -
     }
 
     Ok(lhs)
+}
+
+pub fn parse_expr<'a>(lexer: &mut Lexer<'a>, defs: &Definitions<'a>) -> ParseResult<'a> {
+    let has_undim_prefix = match lexer.peek_token()?.data {
+        TokenData::Sym(':') => {
+            let _ = lexer.next_token();
+            true
+        }
+        _ => false,
+    };
+    let inner_expr = pratt(lexer, defs, 0)?;
+    let postfixed_expr = match lexer.peek_token()?.data {
+        TokenData::Word("per") => {
+            let _ = lexer.next_token();
+            let (_, unit) = parse_units(lexer, defs)?;
+            Expr::binary(BinaryOp::Div, inner_expr, Expr::Quantity(unit))
+        }
+        _ => inner_expr,
+    };
+
+    if has_undim_prefix {
+        Ok(Expr::unary(UnaryOp::Undim, postfixed_expr))
+    } else {
+        Ok(postfixed_expr)
+    }
 }

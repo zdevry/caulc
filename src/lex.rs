@@ -9,7 +9,6 @@ pub enum TokenData<'a> {
     Word(&'a str),
     LBracket,
     RBracket,
-    Comma,
     EndOfInput,
 }
 
@@ -159,7 +158,6 @@ impl<'a> LexIter<'a> {
         match curr {
             '(' => Ok(self.make_token(TokenData::LBracket)),
             ')' => Ok(self.make_token(TokenData::RBracket)),
-            ',' => Ok(self.make_token(TokenData::Comma)),
             _ => Ok(self.make_token(TokenData::Sym(curr))),
         }
     }

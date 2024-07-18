@@ -141,11 +141,12 @@ impl Unary {
                     x.auto_positive_only(
                         |y| y.log10(),
                         false,
-                        "Cannot take the natural log of a non-positive number",
+                        "Cannot take the logarithm of a non-positive number",
                     )
                 },
-                "cannot take the natural log of a quantity with units",
+                "cannot take the logarithm of a quantity with units",
             ),
+            UnaryOp::Undim => Ok(Quantity::dimensionless(operand_result.value)),
         }
     }
 }

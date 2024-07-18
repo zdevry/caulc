@@ -28,6 +28,7 @@ pub enum UnaryOp {
     Exp,
     Ln,
     Log,
+    Undim,
 }
 
 pub fn try_get_prefix_operator(data: char) -> Option<UnaryOp> {

@@ -4,7 +4,7 @@ use crate::{
     consts::Definitions,
     error::{get_token_str, ParseError},
     lex::{Lexer, Token, TokenData},
-    parse::{parse_units, pratt},
+    parse::{parse_expr, parse_units},
     units::Quantity,
 };
 
@@ -83,7 +83,7 @@ impl Query {
         match self
             .scientific
             .clone()
-            .unwrap_or(ScientificDisplay::Exceeds(1e-10, 1e10))
+            .unwrap_or(ScientificDisplay::Exceeds(1e-5, 1e10))
         {
             ScientificDisplay::Never => (false, false),
             ScientificDisplay::Always(fixed) => (true, fixed),
@@ -179,9 +179,6 @@ fn parse_in_query<'a>(
     }
 
     let units = parse_units(lexer, defs)?;
-    if matches!(lexer.peek_token()?.data, TokenData::Comma) {
-        let _ = lexer.next_token();
-    }
     query.unit = Some(units);
     Ok(())
 }
@@ -260,7 +257,7 @@ fn parse_scientific_if_query<'a>(
     }
 
     query.scientific = Some(ScientificDisplay::Exceeds(
-        limit_lo.unwrap_or(1e-10),
+        limit_lo.unwrap_or(1e-5),
         limit_hi.unwrap_or(1e10),
     ));
     Ok(())
@@ -339,7 +336,7 @@ fn parse_query<'a>(
 
 pub fn parse<'a>(s: &'a str, defs: &Definitions<'a>) -> Result<Query, ParseError<'a>> {
     let mut lexer = Lexer::new(s);
-    let expr = pratt(&mut lexer, defs, 0)?;
+    let expr = parse_expr(&mut lexer, defs)?;
 
     let mut query = Query {
         expr,
