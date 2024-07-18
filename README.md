@@ -53,7 +53,8 @@ $ caulc '3mol * R * 320K / 100L' in 'mmHg' round 2
 ```
 
 **Minor Features**
-Specifying a fixed amounts of digits after the decimal point for rounding.
+
+Specifying a fixed amount of digits after the decimal point for rounding.
 Note that the app doesn't output decimal digits for answer values that it can guarantee to be an integer.
 ```
 $ caulc '1.0 + 1.0' fixed 4
